@@ -1,0 +1,22 @@
+[tool.poetry]
+name        = "handbrake-watcher"
+version     = "0.1.0"
+description = ""
+authors     = ["Andrew Rowson <github@growse.com>"]
+readme      = "README.md"
+packages    = [{ include = "handbrake_watcher" }]
+
+[tool.poetry.dependencies]
+python  = "^3.11"
+inotify = "^0.2.10"
+click   = "^8.1.7"
+coloredlogs = "^15.0.1"
+sh = "^2.0.6"
+tqdm = "^4.66.1"
+
+[build-system]
+requires      = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+watcher = "handbrake_watcher.watcher:watch"
