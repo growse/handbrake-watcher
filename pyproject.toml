@@ -17,7 +17,7 @@ pyinstaller = "^6.3.0"
 watchdog    = "^4.0.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.12.1"
+black = "^24.0.0"
 isort = "^5.13.2"
 
 [build-system]
