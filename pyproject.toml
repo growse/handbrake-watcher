@@ -14,7 +14,7 @@ coloredlogs = "^15.0.1"
 sh          = "^2.0.6"
 tqdm        = "^4.66.1"
 pyinstaller = "^6.3.0"
-watchdog    = "^3.0.0"
+watchdog    = "^4.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.12.1"
