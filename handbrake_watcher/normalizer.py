@@ -1,6 +1,7 @@
 import functools
 import logging
 from pathlib import Path
+import time
 
 import click
 import coloredlogs
@@ -42,16 +43,19 @@ def watch(
     logger.debug("Debug logging enabled")
     normalize_file = functools.partial(
         normalize_audio, output_path=output, overwrite=overwrite
-    )
-    # call_function_for_each_file(watch_path, normalize_file)
+    )    
     watch_path_and_call_function(watch_path, normalize_file)
 
 
 def normalize_audio(input_path: Path, output_path: Path, overwrite: bool):
     logger = logging.getLogger(__name__)
+    if input_path.suffix not in [".mkv", ".mp4"]:
+        return False
     try:
         assert output_path.is_dir
         output_file = output_path / input_path.name
+        logger.info("Waiting for 5 seconds before starting conversion for file to finish writing")
+        time.sleep(5)
         for line in sh.ffmpeg_normalize(
             "-o",
             output_file,

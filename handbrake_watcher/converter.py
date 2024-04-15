@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import time
 from typing import List
 
 import click
@@ -29,6 +30,14 @@ from handbrake_watcher.watcher import watch_path_and_call_function
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
 )
 @click.option(
+    "--completed",
+    "completed_path",
+    required=False,
+    default="completed",
+    help="Directory to move completed videos to",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+)
+@click.option(
     "--handbrake-preset-file",
     type=click.Path(exists=True),
     help="A handbrake preset file",
@@ -49,6 +58,7 @@ from handbrake_watcher.watcher import watch_path_and_call_function
 def watch(
     watch_path: Path,
     output: Path,
+    completed_path: Path,
     handbrake_preset_file: str,
     handbrake_preset: str,
     overwrite: bool,
@@ -81,9 +91,8 @@ def watch(
             exit(1)
 
     logger.info(f"Using HandBrake preset of {handbrake_preset}")
-
-    completed_folder_path = watch_path / "completed"
-    os.makedirs(completed_folder_path, exist_ok=True)
+    
+    os.makedirs(completed_path, exist_ok=True)
 
     convert_video_baked = functools.partial(
         convert_video,
@@ -91,7 +100,7 @@ def watch(
         handbrake_preset=handbrake_preset,
         preset_option=preset_option,
         overwrite=overwrite,
-        completed_folder_path=completed_folder_path,
+        completed_folder_path=completed_path,
     )
     watch_path_and_call_function(watch_path, convert_video_baked)
 
@@ -112,13 +121,18 @@ def convert_video(
     except AssertionError:
         logger.exception("Unable to convert {path}")
 
-    output_path = output_folder / f"{input_path.stem}.mkv"
+    output_path = output_folder / f"{input_path.stem}.mkv.handbraking"
+    final_output_path = output_folder / f"{input_path.stem}.mkv"
 
     if output_path.exists() and not overwrite:
         logger.info(f"Output file already exists, not overwriting")
 
     if not is_valid_media_file(input_path):
         logger.error(f"{input_path} is not an eligable video file. Skipping")
+
+
+    logger.info("Waiting for 5 seconds before starting conversion for file to finish writing")
+    time.sleep(5)
 
     try:
         with AbosluteTqdm(total=100) as t:
@@ -140,7 +154,8 @@ def convert_video(
         completed_video_file = completed_folder_path / input_path.name
         logger.info(f"Moving {input_path} to {completed_video_file}")
         os.rename(input_path, completed_video_file)
-
+        os.rename(output_path, final_output_path)
+        
         logger.info(f"Completed conversion of {input_path}")
 
     except sh.ErrorReturnCode as e:  #
@@ -153,6 +168,8 @@ def convert_video(
 
 def is_valid_media_file(input_path: Path) -> bool:
     logger = logging.getLogger(__name__)
+    if input_path.suffix not in [".mkv", ".mp4"]:    
+        return False    
     try:
         probe_output = sh.HandBrakeCLI("--json", "--scan", "-i", input_path)
         metadata = json.loads(probe_output.partition("JSON Title Set:")[2])
