@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import functools
 import logging
 import os
@@ -46,23 +48,26 @@ def watch(
     logger.debug("Debug logging enabled")
     normalize_file = functools.partial(
         normalize_audio,
-        output_path=output_dir_path,
+        output_dir_path=output_dir_path,
         overwrite=overwrite,
-        watched_path=watch_dir_path,
+        watched_dir_path=watch_dir_path,
     )
     watch_path_and_call_function(watch_dir_path, normalize_file)
 
 
 def normalize_audio(
-    input_path: Path, output_dir_path: Path, overwrite: bool, watched_path: Path
+    input_file_path: Path,
+    output_dir_path: Path,
+    overwrite: bool,
+    watched_dir_path: Path,
 ):
     logger = logging.getLogger(__name__)
-    if input_path.suffix not in [".mkv", ".mp4"]:
+    if input_file_path.suffix not in [".mkv", ".mp4"]:
         raise Exception("Extension not supported")
     try:
         assert output_dir_path.is_dir
-        output_file = output_dir_path / input_path.relative_to(watched_path)
-        logger.info(f"Normalizing {input_path} to {output_file}")
+        output_file = output_dir_path / input_file_path.relative_to(watched_dir_path)
+        logger.info(f"Normalizing {input_file_path} to {output_file}")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Brief pause, because bears
@@ -73,19 +78,19 @@ def normalize_audio(
             args.append("-f")
         for line in sh.ffmpeg_normalize(
             *args,
-            input_path,
+            input_file_path,
             _iter=True,
             _log_msg=custom_log,
             _err_to_out=True,
         ):
             logger.info(line)
     except sh.ErrorReturnCode as e:
-        logger.error(f"Error running ffmpeg-normalize on {input_path}")
+        logger.error(f"Error running ffmpeg-normalize on {input_file_path}")
         for line in e.stderr.splitlines():
             logger.error(line.decode())
     except AssertionError:
         logger.error(f"Supplied output path {output_dir_path} is not a directory")
-    os.remove(input_path)
+    os.remove(input_file_path)
 
 
 if __name__ == "__main__":

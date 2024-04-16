@@ -5,12 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 import watchdog
-from watchdog.events import (
-    FileClosedEvent,
-    FileSystemEvent,
-    FileMovedEvent,
-    FileCreatedEvent,
-)
+from watchdog.events import FileClosedEvent, FileMovedEvent, FileSystemEvent
 from watchdog.observers import Observer
 
 

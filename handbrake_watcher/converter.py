@@ -104,32 +104,32 @@ def watch(
         handbrake_preset=handbrake_preset,
         preset_option=preset_option,
         overwrite=overwrite,
-        completed_folder_path=completed_dir_path,
-        watched_path=watch_dir_path,
+        completed_dir_path=completed_dir_path,
+        watched_dir_path=watch_dir_path,
     )
     watch_path_and_call_function(watch_dir_path, convert_video_baked)
 
 
 def convert_video(
-    input_path: Path,
+    input_file_path: Path,
     output_dir_path: Path,
     handbrake_preset: str,
     preset_option: List[str],
     overwrite: bool,
-    completed_folder_path: Path,
-    watched_path: Path,
+    completed_dir_path: Path,
+    watched_dir_path: Path,
 ):
     logger = logging.getLogger(__name__)
-    if input_path.suffix not in [".mkv", ".mp4"]:
+    if input_file_path.suffix not in [".mkv", ".mp4"]:
         raise Exception("Extension not supported")
     try:
-        assert input_path.is_file()
+        assert input_file_path.is_file()
         assert output_dir_path.is_dir()
 
-        output_file = output_dir_path / input_path.relative_to(
-            watched_path
+        output_file = output_dir_path / input_file_path.relative_to(
+            watched_dir_path
         ).with_suffix(".mkv")
-        logger.info(f"Converting {input_path} to {output_file}")
+        logger.info(f"Converting {input_file_path} to {output_file}")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Brief pause, because bears
@@ -141,8 +141,8 @@ def convert_video(
             logger.info(f"Output file already exists, not overwriting")
             return
 
-        if not is_valid_media_file(input_path):
-            logger.error(f"{input_path} is not an eligable video file. Skipping")
+        if not is_valid_media_file(input_file_path):
+            logger.error(f"{input_file_path} is not an eligable video file. Skipping")
             return
 
         with AbosluteTqdm(total=100) as t:
@@ -151,7 +151,7 @@ def convert_video(
                 "--preset",
                 handbrake_preset,
                 "-i",
-                input_path,
+                input_file_path,
                 "-o",
                 output_temp_file,
                 *preset_option,
@@ -162,23 +162,23 @@ def convert_video(
                     percent = 100 * float(line.split(":")[1].strip().rstrip(","))
                     t.update_to(percent)
 
-        if completed_folder_path:
-            completed_video_file = completed_folder_path / input_path.name
-            logger.info(f"Moving {input_path} to {completed_video_file}")
-            os.rename(input_path, completed_video_file)
+        if completed_dir_path:
+            completed_video_file = completed_dir_path / input_file_path.name
+            logger.info(f"Moving {input_file_path} to {completed_video_file}")
+            os.rename(input_file_path, completed_video_file)
         else:
-            logger.info(f"Removing {input_path}")
-            os.remove(input_path)
+            logger.info(f"Removing {input_file_path}")
+            os.remove(input_file_path)
         os.rename(output_temp_file, output_file)
 
-        logger.info(f"Completed conversion of {input_path}")
+        logger.info(f"Completed conversion of {input_file_path}")
 
     except sh.ErrorReturnCode as e:  #
-        logger.error(f"Error running handbrake on {input_path}")
+        logger.error(f"Error running handbrake on {input_file_path}")
         for line in e.stderr.splitlines():
             logger.error(line.decode())
     except AssertionError:
-        logger.exception(f"Unable to convert {input_path}")
+        logger.exception(f"Unable to convert {input_file_path}")
 
 
 def is_valid_media_file(input_path: Path) -> bool:
