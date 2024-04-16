@@ -3,7 +3,7 @@ from pathlib import Path
 import PyInstaller.__main__
 
 HERE = Path(__file__).parent.absolute()
-path_to_main = str(HERE / "watcher.py")
+path_to_main = str(HERE / "converter.py")
 
 
 def install():
@@ -11,7 +11,5 @@ def install():
         [
             path_to_main,
             "--onefile",
-            "--windowed",
-            # other pyinstaller options...
         ]
     )
