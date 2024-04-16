@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/var/cache/pycache poetry install
 RUN --mount=type=cache,target=/var/cache/pycache poetry run build_converter
 RUN --mount=type=cache,target=/var/cache/pycache poetry run build_normalizer
 
-FROM debian:bookworm-slim
+FROM python:3.12-slim
 COPY --from=poetry /app/dist /dist
+RUN pip3 install ffmpeg-normalize
 ENTRYPOINT ["/dist/converter"]
