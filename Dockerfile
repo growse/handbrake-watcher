@@ -10,7 +10,8 @@ COPY poetry.lock /app
 COPY README.md /app
 WORKDIR /app
 RUN --mount=type=cache,target=/var/cache/pycache poetry install
-RUN --mount=type=cache,target=/var/cache/pycache poetry run build
+RUN --mount=type=cache,target=/var/cache/pycache poetry run build_converter
+RUN --mount=type=cache,target=/var/cache/pycache poetry run build_normalizer
 
 FROM debian:bookworm-slim
 COPY --from=poetry /app/dist /dist

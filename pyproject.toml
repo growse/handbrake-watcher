@@ -28,7 +28,8 @@ build-backend = "poetry.core.masonry.api"
 convert = "handbrake_watcher.converter:watch"
 normalize = "handbrake_watcher.normalizer:watch"
 waveform = "handbrake_watcher.waveform:generate_waveform_image"
-build = "handbrake_watcher.pyinstaller:install"
+build_converter = "handbrake_watcher.pyinstaller:build_converter"
+build_normalizer = "handbrake_watcher.pyinstaller:build_normalizer"
 fsevents = "handbrake_watcher.fsevents:watch"
 
 [tool.isort]

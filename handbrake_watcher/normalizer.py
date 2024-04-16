@@ -8,8 +8,8 @@ import click
 import coloredlogs
 import sh
 
-from . import custom_log
-from .watcher import watch_path_and_call_function
+from handbrake_watcher import custom_log
+from handbrake_watcher.watcher import watch_path_and_call_function
 
 
 @click.command()
