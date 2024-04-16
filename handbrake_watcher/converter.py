@@ -4,9 +4,9 @@ import functools
 import json
 import logging
 import os
-from pathlib import Path
 import time
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
 import click
 import coloredlogs
@@ -20,22 +20,24 @@ from handbrake_watcher.watcher import watch_path_and_call_function
 @click.command()
 @click.option(
     "--watch-path",
+    "watch_dir_path",
     required=True,
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
     help="Directory to watch for videos",
 )
 @click.option(
     "--output",
+    "output_dir_path",
     required=True,
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, path_type=Path),
 )
 @click.option(
     "--completed",
-    "completed_path",
+    "completed_dir_path",
     required=False,
-    default="completed",
+    default=None,
     help="Directory to move completed videos to",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, path_type=Path),
 )
 @click.option(
     "--handbrake-preset-file",
@@ -56,9 +58,9 @@ from handbrake_watcher.watcher import watch_path_and_call_function
 )
 @click.option("--debug", is_flag=True, default=False)
 def watch(
-    watch_path: Path,
-    output: Path,
-    completed_path: Path,
+    watch_dir_path: Path,
+    output_dir_path: Path,
+    completed_dir_path: Optional[Path],
     handbrake_preset_file: str,
     handbrake_preset: str,
     overwrite: bool,
@@ -91,50 +93,58 @@ def watch(
             exit(1)
 
     logger.info(f"Using HandBrake preset of {handbrake_preset}")
-    
-    os.makedirs(completed_path, exist_ok=True)
+
+    if completed_dir_path:
+        os.makedirs(completed_dir_path, exist_ok=True)
+    os.makedirs(output_dir_path, exist_ok=True)
 
     convert_video_baked = functools.partial(
         convert_video,
-        output_folder=output,
+        output_dir_path=output_dir_path,
         handbrake_preset=handbrake_preset,
         preset_option=preset_option,
         overwrite=overwrite,
-        completed_folder_path=completed_path,
+        completed_folder_path=completed_dir_path,
+        watched_path=watch_dir_path,
     )
-    watch_path_and_call_function(watch_path, convert_video_baked)
+    watch_path_and_call_function(watch_dir_path, convert_video_baked)
 
 
 def convert_video(
     input_path: Path,
-    output_folder: Path,
+    output_dir_path: Path,
     handbrake_preset: str,
     preset_option: List[str],
     overwrite: bool,
     completed_folder_path: Path,
+    watched_path: Path,
 ):
     logger = logging.getLogger(__name__)
+    if input_path.suffix not in [".mkv", ".mp4"]:
+        raise Exception("Extension not supported")
     try:
         assert input_path.is_file()
-        assert output_folder.is_dir()
+        assert output_dir_path.is_dir()
 
-    except AssertionError:
-        logger.exception("Unable to convert {path}")
+        output_file = output_dir_path / input_path.relative_to(
+            watched_path
+        ).with_suffix(".mkv")
+        logger.info(f"Converting {input_path} to {output_file}")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_folder / f"{input_path.stem}.mkv.handbraking"
-    final_output_path = output_folder / f"{input_path.stem}.mkv"
+        # Brief pause, because bears
+        time.sleep(1)
 
-    if output_path.exists() and not overwrite:
-        logger.info(f"Output file already exists, not overwriting")
+        output_temp_file = output_file.with_suffix(".handbraking")
 
-    if not is_valid_media_file(input_path):
-        logger.error(f"{input_path} is not an eligable video file. Skipping")
+        if output_file.exists() and not overwrite:
+            logger.info(f"Output file already exists, not overwriting")
+            return
 
+        if not is_valid_media_file(input_path):
+            logger.error(f"{input_path} is not an eligable video file. Skipping")
+            return
 
-    logger.info("Waiting for 5 seconds before starting conversion for file to finish writing")
-    time.sleep(5)
-
-    try:
         with AbosluteTqdm(total=100) as t:
             for line in sh.HandBrakeCLI(
                 "--json",
@@ -143,7 +153,7 @@ def convert_video(
                 "-i",
                 input_path,
                 "-o",
-                output_path,
+                output_temp_file,
                 *preset_option,
                 _iter=True,
                 _log_msg=custom_log,
@@ -151,25 +161,30 @@ def convert_video(
                 if '"Progress":' in line:
                     percent = 100 * float(line.split(":")[1].strip().rstrip(","))
                     t.update_to(percent)
-        completed_video_file = completed_folder_path / input_path.name
-        logger.info(f"Moving {input_path} to {completed_video_file}")
-        os.rename(input_path, completed_video_file)
-        os.rename(output_path, final_output_path)
-        
+
+        if completed_folder_path:
+            completed_video_file = completed_folder_path / input_path.name
+            logger.info(f"Moving {input_path} to {completed_video_file}")
+            os.rename(input_path, completed_video_file)
+        else:
+            logger.info(f"Removing {input_path}")
+            os.remove(input_path)
+        os.rename(output_temp_file, output_file)
+
         logger.info(f"Completed conversion of {input_path}")
 
     except sh.ErrorReturnCode as e:  #
         logger.error(f"Error running handbrake on {input_path}")
         for line in e.stderr.splitlines():
             logger.error(line.decode())
-
-    return True
+    except AssertionError:
+        logger.exception(f"Unable to convert {input_path}")
 
 
 def is_valid_media_file(input_path: Path) -> bool:
     logger = logging.getLogger(__name__)
-    if input_path.suffix not in [".mkv", ".mp4"]:    
-        return False    
+    if input_path.suffix not in [".mkv", ".mp4"]:
+        return False
     try:
         probe_output = sh.HandBrakeCLI("--json", "--scan", "-i", input_path)
         metadata = json.loads(probe_output.partition("JSON Title Set:")[2])

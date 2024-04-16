@@ -1,34 +1,35 @@
 [tool.poetry]
-name        = "handbrake-watcher"
-version     = "0.1.0"
+name = "handbrake-watcher"
+version = "0.1.0"
 description = ""
-authors     = ["Andrew Rowson <github@growse.com>"]
-readme      = "README.md"
-packages    = [{ include = "handbrake_watcher" }]
+authors = ["Andrew Rowson <github@growse.com>"]
+readme = "README.md"
+packages = [{ include = "handbrake_watcher" }]
 
 [tool.poetry.dependencies]
-python      = "^3.11, <3.13"
-inotify     = "^0.2.10"
-click       = "^8.1.7"
+python = "^3.11, <3.13"
+inotify = "^0.2.10"
+click = "^8.1.7"
 coloredlogs = "^15.0.1"
-sh          = "^2.0.6"
-tqdm        = "^4.66.1"
+sh = "^2.0.6"
+tqdm = "^4.66.1"
 pyinstaller = "^6.3.0"
-watchdog    = "^4.0.0"
+watchdog = "^4.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.0.0"
 isort = "^5.13.2"
 
 [build-system]
-requires      = ["poetry-core"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-convert   = "handbrake_watcher.converter:watch"
+convert = "handbrake_watcher.converter:watch"
 normalize = "handbrake_watcher.normalizer:watch"
-waveform  = "handbrake_watcher.waveform:generate_waveform_image"
-build     = "handbrake_watcher.pyinstaller:install"
+waveform = "handbrake_watcher.waveform:generate_waveform_image"
+build = "handbrake_watcher.pyinstaller:install"
+fsevents = "handbrake_watcher.fsevents:watch"
 
 [tool.isort]
 profile = "black"

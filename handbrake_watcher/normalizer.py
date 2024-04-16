@@ -1,25 +1,28 @@
 import functools
 import logging
-from pathlib import Path
+import os
 import time
+from pathlib import Path
 
 import click
 import coloredlogs
 import sh
 
 from . import custom_log
-from .watcher import call_function_for_each_file, watch_path_and_call_function
+from .watcher import watch_path_and_call_function
 
 
 @click.command()
 @click.option(
     "--watch-path",
+    "watch_dir_path",
     required=True,
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
     help="Directory to watch for videos",
 )
 @click.option(
     "--output",
+    "output_dir_path",
     required=True,
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
     help="Where normalized videos get written to",
@@ -32,8 +35,8 @@ from .watcher import call_function_for_each_file, watch_path_and_call_function
 )
 @click.option("--debug", is_flag=True, default=False)
 def watch(
-    watch_path: Path,
-    output: Path,
+    watch_dir_path: Path,
+    output_dir_path: Path,
     overwrite: bool,
     debug: bool,
 ):
@@ -42,27 +45,34 @@ def watch(
     logger = logging.getLogger(__name__)
     logger.debug("Debug logging enabled")
     normalize_file = functools.partial(
-        normalize_audio, output_path=output, overwrite=overwrite
-    )    
-    watch_path_and_call_function(watch_path, normalize_file)
+        normalize_audio,
+        output_path=output_dir_path,
+        overwrite=overwrite,
+        watched_path=watch_dir_path,
+    )
+    watch_path_and_call_function(watch_dir_path, normalize_file)
 
 
-def normalize_audio(input_path: Path, output_path: Path, overwrite: bool):
+def normalize_audio(
+    input_path: Path, output_dir_path: Path, overwrite: bool, watched_path: Path
+):
     logger = logging.getLogger(__name__)
     if input_path.suffix not in [".mkv", ".mp4"]:
-        return False
+        raise Exception("Extension not supported")
     try:
-        assert output_path.is_dir
-        output_file = output_path / input_path.name
-        logger.info("Waiting for 5 seconds before starting conversion for file to finish writing")
-        time.sleep(5)
+        assert output_dir_path.is_dir
+        output_file = output_dir_path / input_path.relative_to(watched_path)
+        logger.info(f"Normalizing {input_path} to {output_file}")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Brief pause, because bears
+        time.sleep(1)
+
+        args = ["-o", output_file, "-v", "-c:a", "aac", "--keep-loudness-range-target"]
+        if overwrite:
+            args.append("-f")
         for line in sh.ffmpeg_normalize(
-            "-o",
-            output_file,
-            "-v",
-            "-c:a",
-            "aac",
-            "--keep-loudness-range-target",
+            *args,
             input_path,
             _iter=True,
             _log_msg=custom_log,
@@ -74,7 +84,8 @@ def normalize_audio(input_path: Path, output_path: Path, overwrite: bool):
         for line in e.stderr.splitlines():
             logger.error(line.decode())
     except AssertionError:
-        logger.error(f"Supplied output path {output_path} is not a directory")
+        logger.error(f"Supplied output path {output_dir_path} is not a directory")
+    os.remove(input_path)
 
 
 if __name__ == "__main__":
