@@ -24,7 +24,14 @@ def watch_path_and_call_function(
         def on_any_event(self, event: FileSystemEvent) -> None:
             logger.info(event)
             if event.event_type in ["closed", "moved"] and not event.is_directory:
-                function_to_call(Path(event.src_path))
+                if event.event_type == "moved":
+                    path = Path(event.dest_path)
+                else:
+                    path = Path(event.src_path)
+                try:
+                    function_to_call(path)
+                except Exception as e:
+                    logger.error(f"Error processing {path}: {e}")
             else:
                 logger.debug(f"Event: {event}")
 
@@ -39,7 +46,7 @@ def watch_path_and_call_function(
                 existing_path = Path(existing_dir[0]) / existing_file
                 if existing_path.is_file():
                     logger.info(f"Found existing file: {existing_path}")
-                    event = FileMovedEvent(existing_path)
+                    event = FileMovedEvent(existing_path, existing_path)
                     event_handler.on_any_event(event)
 
     observer.start()
