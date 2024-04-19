@@ -15,7 +15,7 @@ RUN --mount=type=cache,sharing=locked,target=/var/cache/pycache poetry run build
 
 FROM python:3.12-slim
 RUN --mount=type=cache,sharing=locked,target=/var/cache/apt \
-        apt-get update && apt-get install -y ffmpeg
+        apt-get update && apt-get install -y ffmpeg handbrake-cli
 COPY --from=poetry /app/dist /dist
 RUN pip3 install ffmpeg-normalize
 ENTRYPOINT ["/dist/converter"]
