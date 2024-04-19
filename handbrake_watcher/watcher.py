@@ -6,7 +6,7 @@ from typing import Callable
 
 import watchdog
 from watchdog.events import FileClosedEvent, FileMovedEvent, FileSystemEvent
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 
 def watch_path_and_call_function(
@@ -35,7 +35,8 @@ def watch_path_and_call_function(
             else:
                 logger.debug(f"Event: {event}")
 
-    observer = Observer()
+    # NFS doesn't support inotify
+    observer = PollingObserver()
     event_handler = EventHandler()
     observer.schedule(event_handler, str(path_to_watch), recursive=True)
 
