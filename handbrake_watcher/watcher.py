@@ -24,10 +24,10 @@ def watch_path_and_call_function(
         def on_any_event(self, event: FileSystemEvent) -> None:
             if event.event_type in ["closed", "moved"] and not event.is_directory:
                 if event.event_type == "moved":
-                    logger.info("File moved from {event.src_path} to {event.dest_path}")
+                    logger.info(f"File moved from {event.src_path} to {event.dest_path}")
                     path = Path(event.dest_path)
                 else:
-                    logger.info("File closed at {event.src_path}")
+                    logger.info(f"File closed at {event.src_path}")
                     path = Path(event.src_path)
                 try:
                     function_to_call(path)
