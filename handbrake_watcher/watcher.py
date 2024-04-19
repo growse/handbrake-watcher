@@ -34,7 +34,8 @@ def watch_path_and_call_function(
                 except Exception as e:
                     logger.error(f"Error processing {path}: {e}")
             else:
-                logger.debug(f"Event: {event}")
+                if not event.is_directory:
+                    logger.info(f"Ignoring event: {event}")
 
     # NFS doesn't support inotify
     observer = PollingObserver()
